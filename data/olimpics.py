@@ -7,6 +7,7 @@ class Olimp(SqlAlchemyBase):
     __tablename__ = 'olimpycs'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
-    name = sqlalchemy.Column(sqlalchemy.Integer, nullable=False, unique=True)
+    name = sqlalchemy.Column(sqlalchemy.String, nullable=False, unique=True)
 
-    user = orm.relationship('User')
+    user = orm.relationship('Relation')
+    subject = orm.relationship('Olimp_Subject')

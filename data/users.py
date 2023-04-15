@@ -1,6 +1,7 @@
 import sqlalchemy
 from .db_session import SqlAlchemyBase
 from sqlalchemy import orm
+from datetime import time
 
 
 class User(SqlAlchemyBase):
@@ -8,5 +9,7 @@ class User(SqlAlchemyBase):
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
     telegram_id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False, unique=True)
+    time = sqlalchemy.Column(sqlalchemy.Time, default=time(12, 00, 00))
+    classes = sqlalchemy.Column(sqlalchemy.Integer)
 
-    olimp = orm.relationship('Olimp')
+    olimp = orm.relationship('Relation')
