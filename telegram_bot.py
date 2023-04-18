@@ -1,5 +1,5 @@
 import logging
-from telegram.ext import Application
+from telegram.ext import Application, CallbackContext, Updater
 from TOKEN import TOKEN
 from datetime import datetime
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
@@ -12,8 +12,9 @@ from main import get_olimpiads
 from data.subjects import Subject
 from load_olimpycs_db import new_olimpycs
 from telegram import ReplyKeyboardMarkup
-from checking_dateas import reminder
+from checking_dates import reminder
 from load_subjects import load_subjects
+from datetime import time
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -28,10 +29,9 @@ async def start(update, context):
     if not have_id:
         session.add(User(telegram_id=user.id))
         session.commit()
-    reply_keyboard = [['/help', '/find'],
+    reply_keyboard = [['/help', '/add'],
                       ['/set_time', '/stop']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    reminder(user.id)
     await update.message.reply_html(f"""Привет, {user.first_name}. Это бот-напоминалка об олимпидах.
 Если нужна помощь, читай /help :)""", reply_markup=markup)
 
@@ -47,7 +47,7 @@ async def help(update, context):
 /stop - прервать процесс.""")
 
 
-async def find(update, context):
+async def adding(update, context):
     reply_keyboard = [['/stop']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     await update.message.reply_html("Введите название олимпиады", reply_markup=markup)
@@ -55,7 +55,7 @@ async def find(update, context):
 
 
 async def stop(update, context):
-    reply_keyboard = [['/help', '/find'],
+    reply_keyboard = [['/help', '/add'],
                       ['/set_time', '/stop']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     await update.message.reply_html("Процесс прерван", reply_markup=markup)
@@ -78,7 +78,10 @@ async def first_response(update, context):
                                         '\n\nДля добавления олимпиады в список напоминаний выберите номер',
                                         reply_markup=markup)
     else:
-        await update.message.reply_html("""Олимпиад не найдено""")
+        reply_keyboard = [['/help', '/add'],
+                          ['/set_time', '/stop']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+        await update.message.reply_html("""Олимпиад не найдено""", reply_markup=markup)
     return ConversationHandler.END
 
 
@@ -110,24 +113,17 @@ def remove_job_if_exists(name, context):
     return True
 
 
-TIMER = 5  # 5184000
-
-
 async def check_dates(update, context):
-    chat_id = update.effective_message.chat_id
-
-    job_removed = remove_job_if_exists(str(chat_id), context)
-    context.job_queue.run_once(task, TIMER, chat_id=chat_id, name=str(chat_id), data=TIMER)
-
-    text = f'Таймер запущен.'
-    if job_removed:
-        text += ' Старая задача удалена.'
-    await update.effective_message.reply_text(text)
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    chat = update.effective_chat
+    remove_job_if_exists(str(chat_id), context)
+    context.job_queue.run_daily(print_dates, time=time(hour=14, minute=1, second=00), chat_id=chat_id, user_id=user_id)
 
 
-async def task(context):
-    """Выводит сообщение"""
-    await context.bot.send_message(context.job.chat_id, text=f'КУКУ! 5c. прошли!')
+async def print_dates(context):
+    for i in reminder(context.job.user_id):
+        await context.bot.send_message(chat_id=context.job.chat_id, text=i)
 
 
 async def unset(update, context):
@@ -142,10 +138,8 @@ async def unset(update, context):
 
 def main():
     db_session.global_init("db/relations.db")
-    load_subjects()
-    new_olimpycs()
     application = Application.builder().token(TOKEN).build()
-    conv_handler = ConversationHandler(entry_points=[CommandHandler('find', find)],
+    conv_handler = ConversationHandler(entry_points=[CommandHandler('add', adding)],
                                        states={1: [MessageHandler(filters.TEXT & ~filters.COMMAND, first_response)]},
                                        fallbacks=[CommandHandler('stop', stop)])
 
@@ -154,8 +148,10 @@ def main():
     application.add_handler(CallbackQueryHandler(button))
     application.add_handler(CommandHandler("set", check_dates))
     application.add_handler(CommandHandler("unset", unset))
+    application.add_handler(CommandHandler("print_dates", print_dates))
     application.add_handler(conv_handler)
     application.run_polling()
+
 
 
 if __name__ == '__main__':
