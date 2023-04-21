@@ -47,7 +47,8 @@ async def help(update, context):
 /own_olimpiad - добавить своё напоминание;
 /set_class - установить класс;
 /stop - прервать процесс;
-/unset - удалить напоминание.""")
+/unset - удалить напоминание;
+/unset_all - удалить все напоминания.""")
 
 
 async def adding(update, context):
@@ -61,7 +62,7 @@ async def stop(update, context):
     reply_keyboard = [['/help', '/add'],
                       ['/set_time', '/unset']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    await update.message.reply_html("Процесс прерван", reply_markup=markup)
+    await update.message.reply_html("Действие отменено", reply_markup=markup)
     return ConversationHandler.END
 
 
@@ -201,6 +202,36 @@ async def unsetting(update, context):
     return 1
 
 
+async def unsetting_all(update, context):
+    reply_keyboard = [['/help', '/add'],
+                      ['/set_time', '/unset']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+    keyboard = [
+        [
+            InlineKeyboardButton("Да", callback_data='yes'),
+            InlineKeyboardButton("Нет", callback_data='no'),
+        ]
+    ]
+    markup2 = InlineKeyboardMarkup(keyboard)
+    await context.bot.send_message(text='Удаление всех уведомлений', reply_markup=markup,
+                                   chat_id=update.effective_chat.id)
+    await context.bot.send_message(text='Вы уверены, что хотите удалить все уведомления?', reply_markup=markup2,
+                                   chat_id=update.effective_chat.id)
+    return 1
+
+
+async def yes_or_no(update, _):
+    query = update.callback_query
+    txt = query.data
+    if txt == 'yes':
+        session = db_session.create_session()
+        user_id = session.query(User.id).filter(User.telegram_id == query.from_user.id).first()[0]
+        session.query(Relation).filter(Relation.user == user_id).delete()
+        session.commit()
+        await query.answer(text="Все уведомления удалены")
+    else:
+        await query.answer(text="Действие отменено")
+    return ConversationHandler.END
 
 
 def main():
@@ -213,6 +244,12 @@ def main():
     conv_handler_unset = ConversationHandler(entry_points=[CommandHandler('unset', unsetting)],
                                              states={1: [MessageHandler(filters.TEXT & ~filters.COMMAND, unset_response)]},
                                              fallbacks=[CommandHandler('stop', stop)])
+
+    conv_handler_unset_all = ConversationHandler(entry_points=[CommandHandler('unset_all', unsetting_all)],
+                                                 states={1: [CallbackQueryHandler(yes_or_no)]},
+                                                 fallbacks=[CommandHandler('stop', stop)])
+
+    application.add_handler(conv_handler_unset_all)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
     application.add_handler(CallbackQueryHandler(button))
@@ -221,7 +258,6 @@ def main():
     application.add_handler(conv_handler_add)
     application.add_handler(conv_handler_unset)
     application.run_polling()
-
 
 
 if __name__ == '__main__':
