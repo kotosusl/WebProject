@@ -1,6 +1,4 @@
 import logging
-import re
-
 from telegram.ext import Application, CallbackContext, Updater
 from TOKEN import TOKEN
 from datetime import datetime
@@ -17,6 +15,8 @@ from telegram import ReplyKeyboardMarkup
 from checking_dates import reminder
 from load_subjects import load_subjects
 from datetime import time
+from random import shuffle
+from data.olimp_subject import Olimp_Subject
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -31,8 +31,13 @@ async def start(update, context):
     if not have_id:
         session.add(User(telegram_id=user.id))
         session.commit()
-    reply_keyboard = [['/help', '/add'],
-                      ['/set_time', '/unset']]
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    remove_job_if_exists(str(chat_id), context)
+    context.job_queue.run_daily(print_dates, time=time(hour=7, minute=0, second=0), chat_id=chat_id, user_id=user_id)
+    reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     await update.message.reply_html(f"""Привет, {user.first_name}. Это бот-напоминалка об олимпидах.
 Если нужна помощь, читай /help :)""", reply_markup=markup)
@@ -41,11 +46,9 @@ async def start(update, context):
 async def help(update, context):
     await update.message.reply_html(f"""Этот бот умеет:
     
+/start - запустить бот;
 /find - найти олимпиады по фильтрам;
-/set_time - устаноить время уведомлений;
-/add - добавление олимпиады в напоминания;
-/own_olimpiad - добавить своё напоминание;
-/set_class - установить класс;
+/add - быстрое добавление олимпиады в напоминания;
 /stop - прервать процесс;
 /unset - удалить напоминание;
 /unset_all - удалить все напоминания.""")
@@ -59,8 +62,9 @@ async def adding(update, context):
 
 
 async def stop(update, context):
-    reply_keyboard = [['/help', '/add'],
-                      ['/set_time', '/unset']]
+    reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     await update.message.reply_html("Действие отменено", reply_markup=markup)
     return ConversationHandler.END
@@ -78,8 +82,9 @@ async def add_response(update, context):
                 keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{result[i].id}*add')
                              for i in range(len(result) // 3 * 3, len(result))])
             markup = InlineKeyboardMarkup(keys)
-            reply_keyboard = [['/help', '/add'],
-                              ['/set_time', '/unset']]
+            reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
             markup2 = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
             await update.message.reply_html("""Найдены следующие олимпиады:\n\n""" +
                                             '\n'.join([f'{i + 1}. {p.name}' for i, p in enumerate(result)]) +
@@ -87,14 +92,16 @@ async def add_response(update, context):
                                             reply_markup=markup)
             await update.message.reply_html('Для добавления олимпиады в список напоминаний выберите номер', reply_markup=markup2)
         else:
-            reply_keyboard = [['/help', '/add'],
-                              ['/set_time', '/unset']]
+            reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
             markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
             await update.message.reply_html("""Найдено слишком много олимпиад""", reply_markup=markup)
             return ConversationHandler.END
     else:
-        reply_keyboard = [['/help', '/add'],
-                          ['/set_time', '/unset']]
+        reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         await update.message.reply_html("""Олимпиад не найдено""", reply_markup=markup)
     return ConversationHandler.END
@@ -121,8 +128,9 @@ async def unset_response(update, context):
                 keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{list_olimpiads[i][1]}*unset')
                              for i in range(len(list_olimpiads) // 3 * 3, len(list_olimpiads))])
             markup = InlineKeyboardMarkup(keys)
-            reply_keyboard = [['/help', '/add'],
-                              ['/set_time', '/unset']]
+            reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
             markup2 = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 
             await update.message.reply_html("""Найдены следующие олимпиады:\n\n""" +
@@ -130,13 +138,15 @@ async def unset_response(update, context):
                                             reply_markup=markup)
             await update.message.reply_html('Для удаления олимпиады из списка выберите номер', reply_markup=markup2)
         else:
-            reply_keyboard = [['/help', '/add'],
-                              ['/set_time', '/unset']]
+            reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
             markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
             await update.message.reply_html("""Найдено слишком много олимпиад""", reply_markup=markup)
     else:
-        reply_keyboard = [['/help', '/add'],
-                          ['/set_time', '/unset']]
+        reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         await update.message.reply_html("""Олимпиад не найдено""", reply_markup=markup)
     return ConversationHandler.END
@@ -145,7 +155,7 @@ async def unset_response(update, context):
 
 
 
-async def button(update, _):
+async def button(update, context):
     query = update.callback_query
     variant = query.data
     session = db_session.create_session()
@@ -166,6 +176,22 @@ async def button(update, _):
             await query.answer(f'''"{session.query(Olimp.name).filter(Olimp.id == olimp).first()[0]}" успешно удалена из напоминаний''')
         else:
             await query.answer('Олимпиада уже удалена')
+    elif variant.split('*')[1] == 'find':
+        olimp = session.query(Olimp).filter(Olimp.id == int(variant.split("*")[0])).first()
+        text = f'{olimp.name}\n\n'
+        subjects = session.query(Olimp_Subject.subject).filter(Olimp_Subject.olimp == olimp.id).all()
+        for num, k in enumerate(subjects):
+            if num != 0:
+                text += f', {session.query(Subject.name).filter(Subject.id == k[0]).first()[0].capitalize()}'
+            else:
+                text += f'{session.query(Subject.name).filter(Subject.id == k[0]).first()[0].capitalize()}'
+        text += f'\n\n{olimp.min_class}-{olimp.max_class} класс'
+        if olimp.desc:
+            text += f'\n\n{olimp.desc}'
+        text += f'\n\nПодробнее по ссылке:\nhttps://olimpiada.ru{olimp.href}'
+        keyboard = [[InlineKeyboardButton('Добавить', callback_data=f'{olimp.id}*add')]]
+        markup = InlineKeyboardMarkup(keyboard)
+        await context.bot.send_message(text=text, chat_id=update.effective_chat.id, reply_markup=markup)
 
 
 
@@ -181,12 +207,12 @@ def remove_job_if_exists(name, context):
     return True
 
 
-async def check_dates(update, context):
+# перемещено в start
+"""async def check_dates(update, context):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    chat = update.effective_chat
     remove_job_if_exists(str(chat_id), context)
-    context.job_queue.run_daily(print_dates, time=time(hour=17, minute=15, second=00), chat_id=chat_id, user_id=user_id)
+    context.job_queue.run_daily(print_dates, time=time(hour=7, minute=0, second=0), chat_id=chat_id, user_id=user_id)"""
 
 
 async def print_dates(context):
@@ -203,13 +229,14 @@ async def unsetting(update, context):
 
 
 async def unsetting_all(update, context):
-    reply_keyboard = [['/help', '/add'],
-                      ['/set_time', '/unset']]
+    reply_keyboard = [['/help', '/start'],
+                      ['/find', '/add'],
+                      ['/unset', '/unset_all']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     keyboard = [
         [
-            InlineKeyboardButton("Да", callback_data='yes'),
-            InlineKeyboardButton("Нет", callback_data='no'),
+            InlineKeyboardButton("Да", callback_data='yes*0'),
+            InlineKeyboardButton("Нет", callback_data='no*0'),
         ]
     ]
     markup2 = InlineKeyboardMarkup(keyboard)
@@ -223,7 +250,7 @@ async def unsetting_all(update, context):
 async def yes_or_no(update, _):
     query = update.callback_query
     txt = query.data
-    if txt == 'yes':
+    if txt == 'yes*0':
         session = db_session.create_session()
         user_id = session.query(User.id).filter(User.telegram_id == query.from_user.id).first()[0]
         session.query(Relation).filter(Relation.user == user_id).delete()
@@ -231,6 +258,137 @@ async def yes_or_no(update, _):
         await query.answer(text="Все уведомления удалены")
     else:
         await query.answer(text="Действие отменено")
+    return ConversationHandler.END
+
+
+async def finding(update, context):
+    reply_markup = [['/stop']]
+    markup = ReplyKeyboardMarkup(reply_markup)
+    await context.bot.send_message(text='Поиск олимпиады', chat_id=update.effective_chat.id, reply_markup=markup)
+    keyboard = [
+        [InlineKeyboardButton("По классу", callback_data='class*0')],
+        [InlineKeyboardButton("По предмету", callback_data='subject*0')],
+        [InlineKeyboardButton("По названию", callback_data='name*0')]
+    ]
+    markup2 = InlineKeyboardMarkup(keyboard)
+    await context.bot.send_message(text='По какому критерию делать поиск?', reply_markup=markup2,
+                                   chat_id=update.effective_chat.id)
+
+    return 1
+
+
+async def sort_type(update, context):
+    query = update.callback_query
+    status = query.data
+    context.user_data['status'] = status
+    reply_markup = [['/stop']]
+    markup = ReplyKeyboardMarkup(reply_markup)
+    if status == 'class*0':
+        await context.bot.send_message(text='Введите класс для поиска', chat_id=update.effective_chat.id, reply_markup=markup)
+        return 2
+    if status == 'subject*0':
+        await context.bot.send_message(text='Введите предмет для поиска', chat_id=update.effective_chat.id, reply_markup=markup)
+        return 2
+    if status == 'name*0':
+        await context.bot.send_message(text='Введите название олимпиады для поиска', chat_id=update.effective_chat.id, reply_markup=markup)
+        return 2
+
+
+async def finding_response(update, context):
+    session = db_session.create_session()
+    txt = update.message.text
+    if context.user_data['status'] == 'class*0':
+        if txt.isdigit():
+            lst = session.query(Olimp).filter(Olimp.min_class <= int(txt), Olimp.max_class >= int(txt)).all()
+            if lst:
+                shuffle(lst)
+                if len(lst) > 24:
+                    lst = lst[:24]
+                reply_keyboard = [['/help', '/start'],
+                                  ['/find', '/add'],
+                                  ['/unset', '/unset_all']]
+                markup2 = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+                keys = [[InlineKeyboardButton(f'{j + 1}', callback_data=f'{lst[j].id}*find') for j in range(i, i + 3)]
+                        for i in range(0, len(lst) - len(lst) % 3, 3)]
+                if len(lst) % 3 != 0:
+                    keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{lst[i].id}*find')
+                                 for i in range(len(lst) // 3 * 3, len(lst))])
+                markup = InlineKeyboardMarkup(keys)
+                await update.message.reply_html('Найдены следующие олимпиады:\n\n' +
+                                                '\n'.join([f'{i + 1}. {p.name}' for i, p in enumerate(lst)]), reply_markup=markup)
+                await update.message.reply_html('Чтобы больше узнать об олимпиаде, нажмите на её номер',
+                                                reply_markup=markup2)
+            else:
+                reply_keyboard = [['/help', '/start'],
+                                  ['/find', '/add'],
+                                  ['/unset', '/unset_all']]
+                markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+                await update.message.reply_html('Олимпиад не найдено', reply_markup=markup)
+        else:
+            reply_keyboard = [['/help', '/start'],
+                              ['/find', '/add'],
+                              ['/unset', '/unset_all']]
+            markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+            await update.message.reply_html('Олимпиад не найдено', reply_markup=markup)
+    if context.user_data['status'] == 'subject*0':
+        subject_id = session.query(Subject).filter(Subject.name.like(f'%{txt.lower()}%')).all()
+        if subject_id:
+            subject_id = subject_id[0].id
+            lst = session.query(Olimp_Subject).filter(Olimp_Subject.subject == subject_id).all()
+            if lst:
+                shuffle(lst)
+                if len(lst) > 24:
+                    lst = lst[:24]
+                reply_keyboard = [['/help', '/start'],
+                                  ['/find', '/add'],
+                                  ['/unset', '/unset_all']]
+                markup2 = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+                keys = [[InlineKeyboardButton(f'{j + 1}', callback_data=f'{lst[j].id}*find') for j in range(i, i + 3)]
+                        for i in range(0, len(lst) - len(lst) % 3, 3)]
+                if len(lst) % 3 != 0:
+                    keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{lst[i].id}*find')
+                                 for i in range(len(lst) // 3 * 3, len(lst))])
+                markup = InlineKeyboardMarkup(keys)
+                await update.message.reply_html('Найдены следующие олимпиады:\n\n' +
+                                                '\n'.join([f'{i + 1}. {session.query(Olimp.name).filter(p.olimp == Olimp.id).first()[0]}' for i, p in enumerate(lst)]), reply_markup=markup)
+                await update.message.reply_html('Чтобы больше узнать об олимпиаде, нажмите на её номер', reply_markup=markup2)
+            else:
+                reply_keyboard = [['/help', '/start'],
+                                  ['/find', '/add'],
+                                  ['/unset', '/unset_all']]
+                markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+                await update.message.reply_html('Олимпиад не найдено', reply_markup=markup)
+        else:
+            reply_keyboard = [['/help', '/start'],
+                              ['/find', '/add'],
+                              ['/unset', '/unset_all']]
+            markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+            await update.message.reply_html('Олимпиад не найдено', reply_markup=markup)
+    if context.user_data['status'] == 'name*0':
+        lst = session.query(Olimp).filter(Olimp.name.like(f'%{txt.lower()}%')).all()
+        if lst:
+            shuffle(lst)
+            if len(lst) > 24:
+                lst = lst[:24]
+            reply_keyboard = [['/help', '/start'],
+                              ['/find', '/add'],
+                              ['/unset', '/unset_all']]
+            markup2 = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+            keys = [[InlineKeyboardButton(f'{j + 1}', callback_data=f'{lst[j].id}*find') for j in range(i, i + 3)]
+                    for i in range(0, len(lst) - len(lst) % 3, 3)]
+            if len(lst) % 3 != 0:
+                keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{lst[i].id}*find')
+                             for i in range(len(lst) // 3 * 3, len(lst))])
+            markup = InlineKeyboardMarkup(keys)
+            await update.message.reply_html('Найдены следующие олимпиады:\n\n' +
+                                            '\n'.join([f'{i + 1}. {p.name}' for i, p in enumerate(lst)]), reply_markup=markup)
+            await update.message.reply_html('Чтобы больше узнать об олимпиаде, нажмите на её номер', reply_markup=markup2)
+        else:
+            reply_keyboard = [['/help', '/start'],
+                              ['/find', '/add'],
+                              ['/unset', '/unset_all']]
+            markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+            await update.message.reply_html('Олимпиад не найдено', reply_markup=markup)
     return ConversationHandler.END
 
 
@@ -249,12 +407,16 @@ def main():
                                                  states={1: [CallbackQueryHandler(yes_or_no)]},
                                                  fallbacks=[CommandHandler('stop', stop)])
 
+    conv_handler_find = ConversationHandler(entry_points=[CommandHandler('find', finding)],
+                                            states={1: [CallbackQueryHandler(sort_type)],
+                                                    2: [MessageHandler(filters.TEXT & ~filters.COMMAND, finding_response)]},
+                                            fallbacks=[CommandHandler('stop', stop)])
+
+    application.add_handler(conv_handler_find)
     application.add_handler(conv_handler_unset_all)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
     application.add_handler(CallbackQueryHandler(button))
-    application.add_handler(CommandHandler("set", check_dates))
-    application.add_handler(CommandHandler("print_dates", print_dates))
     application.add_handler(conv_handler_add)
     application.add_handler(conv_handler_unset)
     application.run_polling()
