@@ -37,4 +37,3 @@ def reminder(user):
                 text += f'\n\nПодробнее по ссылке:\nhttps://olimpiada.ru{olimp.href}'
                 list_olimpiads.append(text)
     return list_olimpiads
-

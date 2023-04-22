@@ -4,7 +4,6 @@ from get_info_from_site import list_of_olimpiads
 
 
 def get_olimpiads(subject_name='', class_name='any', olimp=''):
-
     params = {
         'class': class_name,
         'type': 'any',
@@ -19,4 +18,3 @@ def get_olimpiads(subject_name='', class_name='any', olimp=''):
         params[f'subject[{subject}]'] = 'on'
 
     return list_of_olimpiads(olimp, params)
-

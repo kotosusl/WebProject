@@ -17,7 +17,8 @@ def new_olimpycs():
 
             for j in i[1]:
                 session.add(Olimp_Subject(olimp=session.query(Olimp.id).filter(Olimp.name == i[0]).first()[0],
-                                          subject=session.query(Subject.id).filter(Subject.name == j.lower()).first()[0]))
+                                          subject=session.query(Subject.id).filter(Subject.name == j.lower()).first()[
+                                              0]))
                 session.commit()
 
             for k in range(4, 9):
@@ -25,8 +26,7 @@ def new_olimpycs():
                     first_day = j['date'].split('-')
                     session.add(Olimp_dates(olimp=session.query(Olimp.id).filter(Olimp.name == i[0]).first()[0],
                                             start_date=date(int(first_day[0]), int(first_day[1]), int(first_day[2])),
-                                            end_date=date(int(first_day[0]), int(first_day[1]), int(first_day[2])) + timedelta(days=int(j['length'])),
+                                            end_date=date(int(first_day[0]), int(first_day[1]),
+                                                          int(first_day[2])) + timedelta(days=int(j['length'])),
                                             event=j.find('span', class_='tl_cont_f').find('font').get_text()))
                     session.commit()
-
-

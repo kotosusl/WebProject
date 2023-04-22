@@ -16,4 +16,3 @@ class Olimp(SqlAlchemyBase):
     user = orm.relationship('Relation')
     subject = orm.relationship('Olimp_Subject')
     dates = orm.relationship('Olimp_dates')
-
