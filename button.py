@@ -42,10 +42,13 @@ async def button(update, context):
                 text += f', {session.query(Subject.name).filter(Subject.id == k[0]).first()[0].capitalize()}'
             else:
                 text += f'{session.query(Subject.name).filter(Subject.id == k[0]).first()[0].capitalize()}'
-        text += f'\n\n{olimp.min_class}-{olimp.max_class} класс'
+        if olimp.min_class != olimp.max_class:
+            text += f'\n\n{olimp.min_class}-{olimp.max_class} класс'
+        else:
+            text += f'\n\n{olimp.max_class} класс'
         if olimp.desc:
             text += f'\n\n{olimp.desc}'
         text += f'\n\nПодробнее по ссылке:\nhttps://olimpiada.ru{olimp.href}'
-        keyboard = [[InlineKeyboardButton('Добавить', callback_data=f'{olimp.id}*add')]]
+        keyboard = [[InlineKeyboardButton('Добавить в напоминания', callback_data=f'{olimp.id}*add')]]
         markup = InlineKeyboardMarkup(keyboard)
         await context.bot.send_message(text=text, chat_id=update.effective_chat.id, reply_markup=markup)

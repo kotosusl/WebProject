@@ -21,5 +21,6 @@ async def start(update, context):
                       ['/find', '/add'],
                       ['/unset', '/unset_all']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    await update.message.reply_html(f"""Привет, {user.first_name}. Это бот-напоминалка об олимпидах.
+    await update.message.reply_html(f"""
+Привет, {user.first_name}. Это бот-напоминалка об этапах и сроках проводимых олимпиад.
 Если нужна помощь, читай /help :)""", reply_markup=markup)

@@ -58,10 +58,10 @@ async def finding_response(update, context):
                                   ['/find', '/add'],
                                   ['/unset', '/unset_all']]
                 markup2 = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-                keys = [[InlineKeyboardButton(f'{j + 1}', callback_data=f'{lst[j].id}*find') for j in range(i, i + 3)]
+                keys = [[InlineKeyboardButton(f'{j + 1}', callback_data=f'{lst[j].olimp}*find') for j in range(i, i + 3)]
                         for i in range(0, len(lst) - len(lst) % 3, 3)]
                 if len(lst) % 3 != 0:
-                    keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{lst[i].id}*find')
+                    keys.append([InlineKeyboardButton(f'{i + 1}', callback_data=f'{lst[i].olimp}*find')
                                  for i in range(len(lst) // 3 * 3, len(lst))])
                 markup = InlineKeyboardMarkup(keys)
                 olimp_txt = '\n'.join([f'{i + 1}. {session.query(Olimp.name).filter(p.olimp == Olimp.id).first()[0]}'
