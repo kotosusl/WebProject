@@ -8,18 +8,18 @@ from data.olimp_subject import Olimp_Subject
 from data.subjects import Subject
 
 
-def reminder(user):
+def reminder(user):  # проверка дат олимпиад
     session = db_session.create_session()
     user_id = session.query(User.id).filter(User.telegram_id == user).first()[0]
     user_list = session.query(Relation.olimp).filter(Relation.user == user_id).all()
     list_olimpiads = []
-    for i in user_list:
+    for i in user_list:  # перебор всех олимпиад пользователя
         olimp = session.query(Olimp).filter(Olimp.id == i[0]).first()
         olimp_data = session.query(Olimp_dates).filter(Olimp_dates.olimp == i[0]).all()
-        for j in olimp_data:
+        for j in olimp_data:  # проверка дат этапов олимпиады
             if (j.start_date == timedelta(days=3) + date.today() or j.start_date == date.today() or
                     (date.today() + timedelta(days=3) == j.end_date and j.end_date - j.start_date > timedelta(days=3))):
-                if j.start_date == timedelta(days=3) + date.today():
+                if j.start_date == timedelta(days=3) + date.today():  # при совпадении сроков формирование сообщения
                     text = f"""Через три дня начинается {j.event.lower()} в мероприятии "{olimp.name}"!\n\n"""
                 elif j.start_date == date.today():
                     text = f"""Уже сегодня начинается {j.event.lower()} в мероприятии "{olimp.name}"!\n\n"""
@@ -38,5 +38,5 @@ def reminder(user):
                 if olimp.desc:
                     text += f'\n\n{olimp.desc}'
                 text += f'\n\nПодробнее по ссылке:\nhttps://olimpiada.ru{olimp.href}'
-                list_olimpiads.append(text)
+                list_olimpiads.append(text)  # добабление в список сообщений
     return list_olimpiads

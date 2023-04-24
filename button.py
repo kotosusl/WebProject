@@ -7,35 +7,37 @@ from data.subjects import Subject
 from data.olimp_subject import Olimp_Subject
 
 
-async def button(update, context):
+async def button(update, context):  # кнопки
     query = update.callback_query
-    variant = query.data
+    variant = query.data  # тип кнопки
     session = db_session.create_session()
     self_id = session.query(User).filter(User.telegram_id == update.effective_user.id).first()
-    if variant.split('*')[1] == 'add':
+    # определение пользователя
+    if variant.split('*')[1] == 'add':  # если кнопка для добавления
         if session.query(Relation).filter(Relation.user == self_id.id, Relation.olimp == variant.split('*')[0]).all():
-            await query.answer("Олимпиада уже добавлена в напоминания")
+            await query.answer("Олимпиада уже добавлена в напоминания")  # проверка наличия олимпиады у пользователя
         else:
-            session.add(Relation(user=self_id.id, olimp=variant.split('*')[0]))
+            session.add(Relation(user=self_id.id, olimp=variant.split('*')[0]))  # добавление олимпиады к пользователю
             session.commit()
             await query.answer(
                 f'''"{session.query(Olimp.name).filter(Olimp.id == 
                                                        int(variant.split(
                                                            '*')[0])).first()[0]}" успешно добавлена в напоминания''')
 
-    elif variant.split('*')[1] == 'unset':
+    elif variant.split('*')[1] == 'unset':  # если кнопка для удаления
         if session.query(Relation).filter(Relation.id == int(variant.split('*')[0])).all():
+            # проверка наличия оимпиады у пользователя
             olimp = session.query(Relation.olimp).filter(Relation.id == int(variant.split('*')[0])).first()[0]
             session.query(Relation).filter(Relation.id == int(variant.split('*')[0])).delete()
-            session.commit()
+            session.commit()  # удаление олимпиады
             await query.answer(
                 f'''"{session.query(Olimp.name).filter(Olimp.id == 
                                                        olimp).first()[0]}" успешно удалена из напоминаний''')
         else:
             await query.answer('Олимпиада уже удалена')
-    elif variant.split('*')[1] == 'find':
+    elif variant.split('*')[1] == 'find':  # если кнопка для поиска
         olimp = session.query(Olimp).filter(Olimp.id == int(variant.split("*")[0])).first()
-        text = f'{olimp.name}\n\n'
+        text = f'{olimp.name}\n\n'  # формирование сообщения об олимпиаде
         subjects = session.query(Olimp_Subject.subject).filter(Olimp_Subject.olimp == olimp.id).all()
         for num, k in enumerate(subjects):
             if num != 0:
@@ -50,5 +52,6 @@ async def button(update, context):
             text += f'\n\n{olimp.desc}'
         text += f'\n\nПодробнее по ссылке:\nhttps://olimpiada.ru{olimp.href}'
         keyboard = [[InlineKeyboardButton('Добавить в напоминания', callback_data=f'{olimp.id}*add')]]
-        markup = InlineKeyboardMarkup(keyboard)
+        markup = InlineKeyboardMarkup(keyboard)  # кнопка добавления
         await context.bot.send_message(text=text, chat_id=update.effective_chat.id, reply_markup=markup)
+        # вывод сообщения
